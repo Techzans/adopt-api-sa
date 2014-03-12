@@ -28,8 +28,18 @@ restify.CORS.ALLOW_HEADERS.push('withcredentials');
 restify.CORS.ALLOW_HEADERS.push('x-requested-with');
 server.use(restify.CORS());
 
-server.get('/api', function(req, res, next) {
+// Load the library
+var nStore = require('nstore');
+// Create a store
+var pets = nStore.new('data/pets.db', function () {
+  // It's loaded now
+});
 
+server.get('/api', function(req, res, next) {
+    makeRequest();
+});
+
+function makeRequest() {
     request(endpoint, function(err, req, body) {
         if (err) return next(err);
 
@@ -81,12 +91,16 @@ server.get('/api', function(req, res, next) {
                 link: "http://www.petharbor.com/pet.asp?uaid=DNVR." + _id,
                 desc: desc
             };
+
+            pets.save(_id, {name: name, desc:desc}, function (err) {
+                if (err) {throw err;}
+            });
+
             res.send(animaldata);
             return next();
         });
     });
-});
-
+}
 server.get(/.*/, restify.serveStatic({
 // server.get(/^\/.*$/, restify.serveStatic({
     'directory': './public',
