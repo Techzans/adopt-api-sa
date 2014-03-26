@@ -4,6 +4,7 @@ var request = require('request');
 var restify = require('restify');
 var _ = require('lodash');
 var chalk = require('chalk');
+
 // var fs = require
 var server = restify.createServer({
     name: 'adoptDenver',
@@ -31,15 +32,22 @@ server.use(restify.CORS());
 // Load the library
 var nStore = require('nstore');
 // Create a store
-var pets = nStore.new('data/pets.db', function () {
-  // It's loaded now
+var pets = nStore.new('data/pets.db', function(err) {
+    // It's loaded now
+    if(err) throw err; 
 });
 
 server.get('/api', function(req, res, next) {
-    makeRequest();
+    makeRequest(req, res, next);
 });
 
-function makeRequest() {
+server.get('/api/:id', function(req, res, next) {
+    console.log(req.params.id);
+    res.send(req.params.id);
+});
+
+
+function makeRequest(req, res, next) {
     request(endpoint, function(err, req, body) {
         if (err) return next(err);
 
@@ -52,8 +60,8 @@ function makeRequest() {
         _id = idParams[1];
 
         var endpointTwo = 'http://www.petharbor.com/detail.asp?ID=' +
-        _id + '&LOCATION=DNVR&searchtype=rnd&shelterlist=%27DNVR%27&where=dummy&kiosk=1';
-        
+            _id + '&LOCATION=DNVR&searchtype=rnd&shelterlist=%27DNVR%27&where=dummy&kiosk=1';
+
         request(endpointTwo, function(err, req, body) {
             if (err) return next(err);
             try {
@@ -83,6 +91,7 @@ function makeRequest() {
             }
 
             desc = desc.replace(/<BR><BR>/, " ").replace(/<BR><BR>/, " ");
+
             // payload for request
             var animaldata = {
                 name: name,
@@ -92,8 +101,13 @@ function makeRequest() {
                 desc: desc
             };
 
-            pets.save(_id, {name: name, desc:desc}, function (err) {
-                if (err) {throw err;}
+            pets.save(_id, {
+                name: name,
+                desc: desc
+            }, function(err) {
+                if (err) {
+                    throw err;
+                }
             });
 
             res.send(animaldata);
@@ -101,8 +115,9 @@ function makeRequest() {
         });
     });
 }
+
 server.get(/.*/, restify.serveStatic({
-// server.get(/^\/.*$/, restify.serveStatic({
+    // server.get(/^\/.*$/, restify.serveStatic({
     'directory': './public',
     'default': 'index.html'
 }));
