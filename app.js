@@ -1,19 +1,29 @@
 'use strict';
 
-var request = require('request');
-var restify = require('restify');
-var _ = require('lodash');
-var chalk = require('chalk');
+var request = require('request'),
+    restify = require('restify'),
+    _ = require('lodash'),
+    chalk = require('chalk'),
+    makeRequest,
+    desc,
+    _id,
+    server,
+    endpoint = 'http://www.petharbor.com/petoftheday.asp?shelterlist=%27DNVR%27&imgwid=160&imght=120&imgname=POD&bgcolor=FFFFFF&fgcolor=000000&type=dog&border=0&availableonly=1&SEQ=0&SHOWSTAT=1&fontface=arial&fontsize=2&noclientinfo=0&bigtitle=1&source=results',
+    nStore,
+    pets;
 
-// var fs = require
-var server = restify.createServer({
+server = restify.createServer({
     name: 'adoptDenver',
     version: '0.0.1'
 });
 
-var desc, _id;
+// embedded db
+nStore = require('nstore');
 
-var endpoint = 'http://www.petharbor.com/petoftheday.asp?shelterlist=%27DNVR%27&imgwid=160&imght=120&imgname=POD&bgcolor=FFFFFF&fgcolor=000000&type=dog&border=0&availableonly=1&SEQ=0&SHOWSTAT=1&fontface=arial&fontsize=2&noclientinfo=0&bigtitle=1&source=results';
+// init storage file
+pets = nStore.new('data/pets.db', function(err) {
+    if (err) throw err;
+});
 
 server.use(restify.acceptParser(server.acceptable));
 server.use(restify.queryParser());
@@ -29,24 +39,42 @@ restify.CORS.ALLOW_HEADERS.push('withcredentials');
 restify.CORS.ALLOW_HEADERS.push('x-requested-with');
 server.use(restify.CORS());
 
-// Load the library
-var nStore = require('nstore');
-// Create a store
-var pets = nStore.new('data/pets.db', function(err) {
-    if(err) throw err; 
-});
-
 server.get('/api', function(req, res, next) {
     makeRequest(req, res, next);
 });
 
 server.get('/api/:id', function(req, res, next) {
-    console.log(req.params.id);
-    res.send(req.params.id);
+
+    var id = req.params.id;
+    var firstCharacter = id.split("")[0];
+    var secondCharacter = id.split("")[1];
+
+    if(firstCharacter === 'a') 
+        id= "A" + id.split("").splice(1).join("")
+
+    // if (!_.isNumber(secondCharacter)) 
+        // return next(new restify.ConflictError("id paramenter must be a number"));
+
+    pets.get(id, function(err, results) {
+        if(err) throw next(err);
+        // results is an object keyed by document key with the document as the value
+        res.send(results);
+    });
+    next();
+    // res.send(req.params.id);
 });
 
+server.get(/.*/, restify.serveStatic({
+    'directory': './public',
+    'default': 'index.html'
+}));
 
-function makeRequest(req, res, next) {
+var port = process.env.PORT || 8080;
+server.listen(port, function() {
+    console.log('%s listening at %s', server.name, server.url);
+});
+
+makeRequest = function makeRequest(req, res, next) {
     request(endpoint, function(err, req, body) {
         if (err) return next(err);
 
@@ -62,12 +90,15 @@ function makeRequest(req, res, next) {
             _id + '&LOCATION=DNVR&searchtype=rnd&shelterlist=%27DNVR%27&where=dummy&kiosk=1';
 
         request(endpointTwo, function(err, req, body) {
+
             if (err) return next(err);
+
             try {
                 var nameParams = /<font\ class="Title">*([^&]+)/gi.exec(body);
             } catch (e) {
                 throw e;
             }
+
             if (_.isNull(nameParams)) {
                 console.log('printing nameParams : ' + nameParams);
                 next(new restify.InvalidArgumentError('error in parsing first response, got null from nameParams'));
@@ -89,6 +120,7 @@ function makeRequest(req, res, next) {
                 throw e;
             }
 
+            // replace all <BR> and <br> in markup with spaces.
             desc = desc
                 .replace(/<BR><BR>/, " ")
                 .replace(/<BR><BR>/, " ")
@@ -105,7 +137,8 @@ function makeRequest(req, res, next) {
 
             pets.save(_id, {
                 name: name,
-                desc: desc
+                desc: desc,
+                posted: (new Date())
             }, function(err) {
                 if (err) {
                     throw err;
@@ -117,14 +150,3 @@ function makeRequest(req, res, next) {
         });
     });
 }
-
-server.get(/.*/, restify.serveStatic({
-    // server.get(/^\/.*$/, restify.serveStatic({
-    'directory': './public',
-    'default': 'index.html'
-}));
-
-var port = process.env.PORT || 8080;
-server.listen(port, function() {
-    console.log('%s listening at %s', server.name, server.url);
-});
