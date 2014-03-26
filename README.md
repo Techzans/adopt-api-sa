@@ -25,7 +25,7 @@ An API to serve data for animals currently in Denver animal shelters ready for a
 [API](http://adopt-a-pet-denver.herokuapp.com/api)
 
 ###CHANGE LOG
-- 0.0.2 Adds pet static route 
+- 0.0.1 Adds pet static route 
 [API / ID](http://adopt-a-pet-denver.herokuapp.com/api/ID) where ID can be : A215848 or a215848 
 
 
