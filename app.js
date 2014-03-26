@@ -137,28 +137,28 @@ makeRequest = function makeRequest(req, res, next) {
 
             // check existing pets collection, for pet id
             // if exists skip saving, otherwise save
-            // (function() {
-                console.log("checking " + _id + " is not already in DB, otherwise saving");
-                pets.get(_id, function(err, doc) {
-                    if (err) {
-                        console.log("saving, non duplicate");
-                        pets.save(_id, {
-                            name: name,
-                            desc: desc,
-                            posted: (new Date())
-                        }, function(err) {
-                            if (err) {
-                                throw err;
-                            }
-                        });
-                    }
-                    if (doc) {
-                        console.log("not saving, duplicate");
-                        return;
-                    }
-                });
-                 res.send(animaldata);
-            // })();
+
+            console.log("checking " + _id + " is not already in DB, otherwise saving");
+            pets.get(_id, function(err, doc) {
+                if (err) {
+                    console.log("saving, non duplicate");
+                    
+                    // append posted property on animal obj
+                    // *
+                    animaldata.posted = new Date();
+
+                    pets.save(_id, animaldata, function(err) {
+                        if (err) throw err;
+                    });
+                }
+
+                if (doc) {
+                    console.log("not saving, duplicate");
+                    return;
+                }
+                
+            });
+            res.send(animaldata);
             return next();
         });
     });
