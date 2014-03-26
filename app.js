@@ -49,18 +49,18 @@ server.get('/api/:id', function(req, res, next) {
     var firstCharacter = id.split("")[0];
     var secondCharacter = id.split("")[1];
 
-    if(firstCharacter === 'a') 
-        id= "A" + id.split("").splice(1).join("")
+    if (firstCharacter === 'a')
+        id = "A" + id.split("").splice(1).join("")
 
     // if (!_.isNumber(secondCharacter)) 
-        // return next(new restify.ConflictError("id paramenter must be a number"));
+    // return next(new restify.ConflictError("id paramenter must be a number"));
 
     pets.get(id, function(err, results) {
-        if(err) throw next(err);
+        if (err) throw next(err);
         // results is an object keyed by document key with the document as the value
         res.send(results);
     });
-    next();
+    return next();
     // res.send(req.params.id);
 });
 
@@ -135,17 +135,30 @@ makeRequest = function makeRequest(req, res, next) {
                 desc: desc
             };
 
-            pets.save(_id, {
-                name: name,
-                desc: desc,
-                posted: (new Date())
-            }, function(err) {
-                if (err) {
-                    throw err;
-                }
-            });
-
-            res.send(animaldata);
+            // check existing pets collection, for pet id
+            // if exists skip saving, otherwise save
+            // (function() {
+                console.log("checking " + _id + " is not already in DB, otherwise saving");
+                pets.get(_id, function(err, doc) {
+                    if (err) {
+                        console.log("saving, non duplicate");
+                        pets.save(_id, {
+                            name: name,
+                            desc: desc,
+                            posted: (new Date())
+                        }, function(err) {
+                            if (err) {
+                                throw err;
+                            }
+                        });
+                    }
+                    if (doc) {
+                        console.log("not saving, duplicate");
+                        return;
+                    }
+                });
+                 res.send(animaldata);
+            // })();
             return next();
         });
     });
