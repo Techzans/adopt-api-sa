@@ -33,7 +33,6 @@ server.use(restify.CORS());
 var nStore = require('nstore');
 // Create a store
 var pets = nStore.new('data/pets.db', function(err) {
-    // It's loaded now
     if(err) throw err; 
 });
 
@@ -90,7 +89,10 @@ function makeRequest(req, res, next) {
                 throw e;
             }
 
-            desc = desc.replace(/<BR><BR>/, " ").replace(/<BR><BR>/, " ");
+            desc = desc
+                .replace(/<BR><BR>/, " ")
+                .replace(/<BR><BR>/, " ")
+                .replace(/<br><br>/, " ");
 
             // payload for request
             var animaldata = {
